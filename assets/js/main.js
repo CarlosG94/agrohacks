@@ -1,147 +1,143 @@
-$(document).ready(function(){
-  var nav= $('.navbar-fixed-top');
-  var distancia = $('.navbar-fixed-top').offset();
-  if (distancia.top > 0) {
-    nav.removeClass('normal').addClass('efecto');
-  }
-  $(window).scroll(function(){
-    var scroll= $(window).scrollTop();
-
-    if(scroll >= 600){
-      nav.removeClass('normal').addClass('efecto');
-    } else{
-      nav.removeClass('efecto').addClass('normal');
-    }
-  });
-});
-
-(function($) {
-  "use strict";
-  // Add "loaded" class when a section has been loaded
-  $(window).scroll(function() {
-    var scrollTop = $(window).scrollTop();
-    $(".section").each(function() {
-      var elementTop = $(this).offset().top - $('#header').outerHeight();
-      if(scrollTop >= elementTop) {
-        $(this).addClass('loaded');
-      }
-    });
-  });
-
-  //map
-
-  function initialize() {
-        var mapCanvas = document.getElementById('map-canvas');
-        var mapOptions = {
-          center: new google.maps.LatLng(19.3594418,-99.258399),
-          zoom: 16,
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
-          scrollwheel: false
+(function () {
+    var Mountain, MountainRange, dt, mountainRanges, sketch;
+    sketch = Sketch.create();
+    sketch.mouse.x = sketch.width / 10;
+    sketch.mouse.y = sketch.height;
+    mountainRanges = [];
+    dt = 1;
+    Mountain = function (config) {
+        return this.reset(config);
+    };
+    Mountain.prototype.reset = function (config) {
+        this.layer = config.layer;
+        this.x = config.x;
+        this.y = config.y;
+        this.width = config.width;
+        this.height = config.height;
+        return this.color = config.color;
+    };
+    MountainRange = function (config) {
+        this.x = 0;
+        this.mountains = [];
+        this.layer = config.layer;
+        this.width = {
+            min: config.width.min,
+            max: config.width.max
+        };
+        this.height = {
+            min: config.height.min,
+            max: config.height.max
+        };
+        this.speed = config.speed;
+        this.color = config.color;
+        this.populate();
+        return this;
+    };
+    MountainRange.prototype.populate = function () {
+        var newHeight, newWidth, results, totalWidth;
+        totalWidth = 0;
+        results = [];
+        while (totalWidth <= sketch.width + this.width.max * 4) {
+            newWidth = round(random(this.width.min, this.width.max));
+            newHeight = round(random(this.height.min, this.height.max));
+            this.mountains.push(new Mountain({
+                layer: this.layer,
+                x: this.mountains.length === 0 ? 0 : this.mountains[this.mountains.length - 1].x + this.mountains[this.mountains.length - 1].width,
+                y: sketch.height - newHeight,
+                width: newWidth,
+                height: newHeight,
+                color: this.color
+            }));
+            results.push(totalWidth += newWidth);
         }
-        var map = new google.maps.Map(mapCanvas, mapOptions)
-      }
-      google.maps.event.addDomListener(window, 'load', initialize);
-
-//   options = $.extend({
-//     scrollwheel: false,
-//     navigationControl: false,
-//     mapTypeControl: false,
-//     scaleControl: false,
-//     draggable: false,
-//     mapTypeId: google.maps.MapTypeId.ROADMAP
-// }, options);
-
-  // One Page Navigation Setup
-  $('.one-page-nav #navigation').singlePageNav({
-    offset: $('.one-page-nav').outerHeight(),
-    filter: ':not(.external)',
-    speed: 750,
-    currentClass: 'active',
-
-    beforeStart: function() {
-    },
-    onComplete: function() {
-    }
-  });
-
-  // Sticky Navbar Affix
-  $('.one-page-nav').affix({
-    offset: {
-      top: $('#topbar').outerHeight(),
-    }
-  });
-
-  // Smooth Hash Link Scroll
-  $('.smooth-scroll').click(function() {
-    if (location.pathname.replace(/^\//,'') === this.pathname.replace(/^\//,'') && location.hostname === this.hostname) {
-
-      var target = $(this.hash);
-      target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
-      if (target.length) {
-        $('html,body').animate({
-          scrollTop: target.offset().top
-        }, 1000);
-        return false;
-      }
-    }
-  });
-
-  $('.nav a').on('click', function(){
-    if($('.navbar-toggle').css('display') !=='none'){
-      $(".navbar-toggle").click();
-    }
-  });
-
-  var $container = $('.portfolio-isotope');
-  $container.imagesLoaded(function(){
-    $container.isotope({
-      itemSelector : '.portfolio-item',
-      resizable: true,
-      resizesContainer: true
+        return results;
+    };
+    MountainRange.prototype.update = function () {
+        var firstMountain, lastMountain, newHeight, newWidth;
+        this.x -= sketch.mouse.x * this.speed * dt;
+        firstMountain = this.mountains[0];
+        if (firstMountain.width + firstMountain.x + this.x < -this.width.max) {
+            newWidth = round(random(this.width.min, this.width.max));
+            newHeight = round(random(this.height.min, this.height.max));
+            lastMountain = this.mountains[this.mountains.length - 1];
+            firstMountain.reset({
+                layer: this.layer,
+                x: lastMountain.x + lastMountain.width,
+                y: sketch.height - newHeight,
+                width: newWidth,
+                height: newHeight,
+                color: this.color
+            });
+            return this.mountains.push(this.mountains.shift());
+        }
+    };
+    MountainRange.prototype.render = function () {
+        var c, d, i, j, pointCount, ref;
+        sketch.save();
+        sketch.translate(this.x, (sketch.height - sketch.mouse.y) / 20 * this.layer);
+        sketch.beginPath();
+        pointCount = this.mountains.length;
+        sketch.moveTo(this.mountains[0].x, this.mountains[0].y);
+        for (i = j = 0, ref = pointCount - 2; j <= ref; i = j += 1) {
+            c = (this.mountains[i].x + this.mountains[i + 1].x) / 2;
+            d = (this.mountains[i].y + this.mountains[i + 1].y) / 2;
+            sketch.quadraticCurveTo(this.mountains[i].x, this.mountains[i].y, c, d);
+        }
+        sketch.lineTo(sketch.width - this.x, sketch.height);
+        sketch.lineTo(0 - this.x, sketch.height);
+        sketch.closePath();
+        sketch.fillStyle = this.color;
+        sketch.fill();
+        return sketch.restore();
+    };
+    sketch.setup = function () {
+        var i, results;
+        i = 5;
+        results = [];
+        while (i--) {
+            results.push(mountainRanges.push(new MountainRange({
+                layer: i + 1,
+                width: {
+                    min: (i + 1) * 50,
+                    max: (i + 1) * 70
+                },
+                height: {
+                    min: 200 - i * 40,
+                    max: 300 - i * 40
+                },
+                speed: (i + 1) * 0.003,
+                color: 'hsl( 120, ' + ((i + 1) * 1 + 10) + '%, ' + (75 - i * 13) + '% )'
+            })));
+        }
+        return results;
+    };
+    sketch.clear = function () {
+        return sketch.clearRect(0, 0, sketch.width, sketch.height);
+    };
+    sketch.update = function () {
+        var i, results;
+        dt = sketch.dt < 0.1 ? 0.1 : sketch.dt / 16;
+        dt = dt > 5 ? 5 : dt;
+        i = mountainRanges.length;
+        results = [];
+        while (i--) {
+            
+            results.push(mountainRanges[i].update(i));
+        }
+        return results;
+    };
+    sketch.draw = function () {
+        var i, results;
+        i = mountainRanges.length;
+        results = [];
+        while (i--) {
+            
+            results.push(mountainRanges[i].render(i));
+        }
+        return results;
+    };
+    $(window).on('mousemove', function (e) {
+        sketch.mouse.x = e.pageX;
+        return sketch.mouse.y = e.pageY;
     });
-  });
-
-  $('section#challenge a').on('click', function(){
-    $('#project-modal img').attr('src', $(this).attr('data-image-url'));
-    if ($(this).attr('data') == "texto1") {
-        $('#project-modal h3.project-title').html('Reto 1 : Logística');
-        $('#project-modal p.prueba').html('<h4><strong>Crear tecnología que eficientice el proceso de transporte de bienes desde el lugar de producción hasta el consumidor final.</strong></h4>');
-    }
-    if ($(this).attr('data') == "texto2") {
-         $('#project-modal p.prueba').html('<h4><strong>¿Cómo hacer tecnología de punta lo suficientemente accesible para que la mayoría de los agricultores mexicanos puedan hacer uso de ella?</strong></h3> Tan sólo en el primer semestre del año 2015, 2.06 billones de dólares han sido invertidos en “startups” enfocados a la tecnología agrícola (Agrotech). Es importante mencionar que el sector agrícola enfrentará enormes retos con la finalidad de alimentar 9.6 billones de personas que la FAO (Food and Agriculture Organization of the United Nations) predice habitarán el planeta en el año 2025; por lo que la producción de comida deberá aumentar forzosamente en un 70% para el año 2050, y esto tendrá que lograrse a pesar de la escasa tierra fértil, el incremento en la necesidad de agua potable y otros factores como el cambio climático, que según un reporte emitido por la ONU puede cambiar severamente el ciclo de plantas y animales.');
-         $('#project-modal h3.project-title').html('Reto 2 : Agricultura');
-    }
-    if ($(this).attr('data') == "texto3") {
-         $('#project-modal p.prueba').html('<h4><strong>¿Cómo integras tecnología a los PYMES de México?</strong></h4>En el año 2015, las tiendas han doblado presupuestos con la finalidad de mejorar las estrategias de comunicación directa con sus clientes, ya que las redes sociales y móviles se han convertido en un papel fundamental en la experiencia de compra de la gente. Es importante resaltar que los minoristas han intensificado sus esfuerzos por incorporarse al mercado a través de las tecnologías móviles con funciones como el cumplimiento de pedidos, pagos y programas de lealtad.');
-         $('#project-modal h3.project-title').html('Reto 3 : Retail');
-    }
-    // if(){
-    //   $('#project-modal p.prueba').html('Así se puede hacer un texto dinámico chinga!');
-    // }
-  });
-
-  // filter items when filter link is clicked
-  $('#filters a').click(function(){
-    var selector = $(this).attr('data-filter');
-    $container.isotope({ filter: selector });
-    return false;
-  });
-
-  $('#contactform').submit(function() {
-    var action = $(this).attr('action');
-    var values = $(this).serialize();
-
-    $.post(action, values, function(data) {
-      $('.results').hide().html(data).slideDown('slow');
-      $('#contactform').find('.form-control').val('');
-    });
-    return false;
-  });
-
-  $('.iphone-carousel').on('slid.bs.carousel', function () {
-    var carouselData = $(this).data('bs.carousel');
-    var currentIndex = carouselData.getActiveIndex();
-    $('.section-iphone-features .feature-block').removeClass('active');
-    $(".section-iphone-features").find("[data-slide-to='" + currentIndex + "']").addClass('active');
-  });
-})(jQuery);
+}.call(this));
